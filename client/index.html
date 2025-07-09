@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego Multijugador</title>
+    <link rel="stylesheet" href="css/menu.css">
+</head>
+<body>
+    <div class="menu-container">
+        <div class="left-container">
+            <h1>Juego Multijugador</h1>
+            <input type="text" id="playerName" placeholder="Tu nombre" maxlength="15">
+            
+            <div class="color-picker">
+                <label>Color de tu círculo:</label>
+                <input type="color" id="playerColor" value="#8B4513">
+            </div>
+            
+            <button id="playButton">JUGAR</button>
+        </div>
+        
+        <div class="right-container">
+            <h2>¿Cómo jugar?</h2>
+            <ul>
+                <li>WASD o Flechas: Movimiento</li>
+                <li>Esquiva a otros jugadores</li>
+                <li>¡Sobrevive el mayor tiempo posible!</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/menu.js"></script>
+</body>
+</html>
