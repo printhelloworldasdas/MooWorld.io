@@ -1,0 +1,13 @@
+{
+  "name": "mooworld-server",
+  "version": "1.0.0",
+  "description": "Servidor de MooWorld.io",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0",
+    "ws": "^8.13.0"
+  }
+}
