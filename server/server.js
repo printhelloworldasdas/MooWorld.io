@@ -1,72 +1,65 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const path = require('path');
+const WebSocket = require("ws");
+const config = require("./config");
+const { v4: uuidv4 } = require("uuid");
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
+const wss = new WebSocket.Server({ port: config.server.port });
+console.log(`MooWorld.io servidor iniciado en puerto ${config.server.port}`);
 
-// Servir archivos estáticos
-app.use(express.static(path.join(__dirname, '../client')));
-
-// Datos del juego
 const players = {};
 
-io.on('connection', (socket) => {
-    console.log('Nuevo jugador conectado:', socket.id);
+wss.on("connection", (ws) => {
+  let playerId = null;
 
-    // Evento 'joinGame' recibido desde el menú
-    socket.on('joinGame', (playerData) => {
-        // Validar color (puedes añadir más reglas si quieres)
-        const defaultColor = '#8B4513'; // Marrón por defecto
-        const color = playerData.color || defaultColor;
+  ws.on("message", (msg) => {
+    try {
+      const data = JSON.parse(msg);
 
-        // Crear jugador
-        players[socket.id] = {
-            id: socket.id,
-            name: playerData.name || 'Jugador',
-            color: color,
-            x: Math.random() * 800,
-            y: Math.random() * 600,
-            health: 100,
-            score: 0
+      if (data.type === "join") {
+        playerId = uuidv4();
+        const spawnX = Math.random() * (config.map.width - 2 * config.player.spawnMargin) + config.player.spawnMargin;
+        const spawnY = Math.random() * (config.map.height - 2 * config.player.spawnMargin) + config.player.spawnMargin;
+
+        players[playerId] = {
+          id: playerId,
+          username: data.username,
+          x: spawnX,
+          y: spawnY
         };
 
-        // Enviar datos iniciales al nuevo jugador
-        socket.emit('init', {
-            player: players[socket.id],
-            otherPlayers: Object.values(players).filter(p => p.id !== socket.id)
-        });
+        ws.send(JSON.stringify({
+          type: "init",
+          id: playerId,
+          x: spawnX,
+          y: spawnY
+        }));
+      }
 
-        // Notificar a otros jugadores
-        socket.broadcast.emit('newPlayer', players[socket.id]);
-    });
+      if (data.type === "move" && playerId && players[playerId]) {
+        players[playerId].x = data.x;
+        players[playerId].y = data.y;
+      }
+    } catch (err) {
+      console.error("Mensaje inválido:", msg);
+    }
+  });
 
-    // Movimiento del jugador
-    socket.on('move', (data) => {
-        if (players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-            socket.broadcast.emit('playerMoved', {
-                id: socket.id,
-                x: data.x,
-                y: data.y
-            });
-        }
-    });
-
-    // Desconexión
-    socket.on('disconnect', () => {
-        if (players[socket.id]) {
-            console.log('Jugador desconectado:', players[socket.id].name);
-            delete players[socket.id];
-            io.emit('playerDisconnected', socket.id);
-        }
-    });
+  ws.on("close", () => {
+    if (playerId && players[playerId]) {
+      delete players[playerId];
+    }
+  });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+// Loop de sincronización
+setInterval(() => {
+  const state = {
+    type: "state",
+    players
+  };
+  const stateStr = JSON.stringify(state);
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(stateStr);
+    }
+  });
+}, 1000 / config.game.tickRate);
