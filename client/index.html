@@ -5,17 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MooWorld.io</title>
   <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="menu">
     <h1>MooWorld.io</h1>
-    <input id="username" placeholder="Enter your name" />
-    <button id="playBtn">Play</button>
+    <div class="menu-box">
+      <input id="username" placeholder="Enter your name" />
+      <br/>
+      <button id="playBtn">Play</button>
+    </div>
   </div>
 
   <canvas id="gameCanvas"></canvas>
 
-  <!-- UI elements -->
   <div id="leaderboard">
     <h2>Leaderboard</h2>
     <ul id="leaderboardList"></ul>
