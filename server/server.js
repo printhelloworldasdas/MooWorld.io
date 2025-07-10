@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// 👉 Servir archivos estáticos desde la carpeta client/
+// Servir archivos estáticos del cliente
 app.use(express.static(path.join(__dirname, "../client")));
 
 const players = {};
@@ -30,14 +30,14 @@ wss.on("connection", (ws) => {
           id: playerId,
           username: data.username,
           x: spawnX,
-          y: spawnY
+          y: spawnY,
         };
 
         ws.send(JSON.stringify({
           type: "init",
           id: playerId,
           x: spawnX,
-          y: spawnY
+          y: spawnY,
         }));
       }
 
@@ -57,20 +57,21 @@ wss.on("connection", (ws) => {
   });
 });
 
-// Enviar estado a todos los jugadores
+// Enviar estado del juego
 setInterval(() => {
   const state = {
     type: "state",
-    players
+    players,
   };
-  const stateStr = JSON.stringify(state);
-  wss.clients.forEach(client => {
+
+  const json = JSON.stringify(state);
+  wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(stateStr);
+      client.send(json);
     }
   });
 }, 1000 / config.game.tickRate);
 
 server.listen(config.server.port, () => {
-  console.log(`Servidor activo en http://localhost:${config.server.port}`);
+  console.log(`✅ Servidor activo en http://localhost:${config.server.port}`);
 });
