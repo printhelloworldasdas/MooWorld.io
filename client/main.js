@@ -6,6 +6,13 @@ const minimapCtx = minimap.getContext("2d");
 
 const leaderboardList = document.getElementById("leaderboardList");
 
+// Configuración del mapa, la puedes definir aquí o recibirla desde el servidor
+window.gameConfig = {
+  width: 5000,
+  height: 5000,
+  gridSize: 50,
+};
+
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -68,11 +75,11 @@ socket.onmessage = (event) => {
   }
 };
 
-window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+window.addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
+window.addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
 
 function drawGrid() {
-  const gridSize = 50;
+  const gridSize = window.gameConfig.gridSize;
   ctx.strokeStyle = "rgba(0,0,0,0.1)";
   const offsetX = player.x - canvas.width / 2;
   const offsetY = player.y - canvas.height / 2;
@@ -91,10 +98,11 @@ function drawGrid() {
 }
 
 function movePlayer() {
-  if (keys["w"]) player.y -= player.speed;
-  if (keys["s"]) player.y += player.speed;
-  if (keys["a"]) player.x -= player.speed;
-  if (keys["d"]) player.x += player.speed;
+  // Limitar movimiento para no salirse del mapa
+  if (keys["w"]) player.y = Math.max(player.radius, player.y - player.speed);
+  if (keys["s"]) player.y = Math.min(window.gameConfig.height - player.radius, player.y + player.speed);
+  if (keys["a"]) player.x = Math.max(player.radius, player.x - player.speed);
+  if (keys["d"]) player.x = Math.min(window.gameConfig.width - player.radius, player.x + player.speed);
 }
 
 // Función para obtener ángulo desde el centro hacia el mouse
@@ -106,8 +114,8 @@ function getHandAngle(screenX, screenY) {
 
 function drawPlayerBodyAndHands(screenX, screenY, radius) {
   const handRadius = 12;
-  const handDistance = radius * 0.75;  // distancia adelante del cuerpo
-  const handSeparation = 60;            // separación lateral entre manos
+  const handDistance = radius * 0.75; // distancia adelante del cuerpo
+  const handSeparation = 60; // separación lateral entre manos
 
   const angle = getHandAngle(screenX, screenY);
 
@@ -178,9 +186,8 @@ function drawPlayer() {
 }
 
 function updateLeaderboard() {
-  // Ordenar jugadores por nombre alfabéticamente para ejemplo
   const sortedPlayers = Object.values(players).sort((a, b) => a.username.localeCompare(b.username));
-  
+
   leaderboardList.innerHTML = "";
   for (let i = 0; i < Math.min(sortedPlayers.length, 10); i++) {
     const p = sortedPlayers[i];
@@ -195,20 +202,17 @@ function drawMinimap() {
   const mapWidth = minimap.width;
   const mapHeight = minimap.height;
 
-  // Clear minimap
   minimapCtx.clearRect(0, 0, mapWidth, mapHeight);
 
-  // Draw background
   minimapCtx.fillStyle = "#222";
   minimapCtx.fillRect(0, 0, mapWidth, mapHeight);
 
-  // Determine scale
-  // Assuming world size, for demo let's say 2000x2000
-  const worldSize = 2000;
-  const scaleX = mapWidth / worldSize;
-  const scaleY = mapHeight / worldSize;
+  const worldSizeX = window.gameConfig.width;
+  const worldSizeY = window.gameConfig.height;
 
-  // Draw players on minimap
+  const scaleX = mapWidth / worldSizeX;
+  const scaleY = mapHeight / worldSizeY;
+
   for (let id in players) {
     const p = players[id];
     const miniX = p.x * scaleX;
@@ -221,8 +225,46 @@ function drawMinimap() {
   }
 }
 
+// Dibuja sombreado oscuro en los bordes del mapa para indicar límite
+function drawDarkBorders() {
+  const darkColor = "rgba(0, 0, 0, 0.6)";
+  const mapWidth = window.gameConfig.width;
+  const mapHeight = window.gameConfig.height;
+
+  const leftLimit = player.x - canvas.width / 2;
+  const rightLimit = player.x + canvas.width / 2;
+  const topLimit = player.y - canvas.height / 2;
+  const bottomLimit = player.y + canvas.height / 2;
+
+  ctx.fillStyle = darkColor;
+
+  // Izquierda
+  if (leftLimit < 0) {
+    ctx.fillRect(0, 0, -leftLimit, canvas.height);
+  }
+  // Derecha
+  if (rightLimit > mapWidth) {
+    ctx.fillRect(canvas.width - (rightLimit - mapWidth), 0, rightLimit - mapWidth, canvas.height);
+  }
+  // Arriba
+  if (topLimit < 0) {
+    ctx.fillRect(0, 0, canvas.width, -topLimit);
+  }
+  // Abajo
+  if (bottomLimit > mapHeight) {
+    ctx.fillRect(0, canvas.height - (bottomLimit - mapHeight), canvas.width, bottomLimit - mapHeight);
+  }
+}
+
 function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Fondo césped
+  ctx.fillStyle = "#87ce6f";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawDarkBorders();
+
   drawGrid();
   movePlayer();
   drawPlayers();
