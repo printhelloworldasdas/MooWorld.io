@@ -9,7 +9,6 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Servir archivos estáticos del cliente
 app.use(express.static(path.join(__dirname, "../client")));
 
 const players = {};
@@ -57,7 +56,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-// Enviar estado del juego
+// Enviar estado del juego a todos los clientes
 setInterval(() => {
   const state = {
     type: "state",
