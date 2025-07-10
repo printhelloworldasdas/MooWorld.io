@@ -8,39 +8,15 @@ const leaderboardList = document.getElementById("leaderboardList");
 
 // Configuración del mapa y biomas
 window.gameConfig = {
-  width: 8000,  // Igual que en config.js
+  width: 8000,
   height: 8000,
   gridSize: 50,
   biomes: {
-    snow: {
-      yStart: 0,
-      yEnd: 1500,
-      speedMultiplier: 0.6
-    },
-    desert: {
-      yStart: 6500,
-      yEnd: 8000,
-      speedMultiplier: 1.0
-    },
-    river: {
-      yStart: 3700,
-      yEnd: 3900,
-      speedMultiplier: 0.9,
-      current: {
-        x: 0.8,
-        y: 0
-      }
-    },
-    sandBanks: {
-      yStart: 3500,
-      yEnd: 3700,
-      speedMultiplier: 1.0
-    },
-    sandBanksBottom: {
-      yStart: 3900,
-      yEnd: 4100,
-      speedMultiplier: 1.0
-    }
+    snow: { yStart: 0, yEnd: 1500, speedMultiplier: 0.6 },
+    desert: { yStart: 6500, yEnd: 8000, speedMultiplier: 1.0 },
+    river: { yStart: 3700, yEnd: 3900, speedMultiplier: 0.9, current: { x: 0.8, y: 0 } },
+    sandBanks: { yStart: 3500, yEnd: 3700, speedMultiplier: 1.0 },
+    sandBanksBottom: { yStart: 3900, yEnd: 4100, speedMultiplier: 1.0 }
   }
 };
 
@@ -61,16 +37,20 @@ let player = {
   x: 0,
   y: 0,
   radius: 36,
-  speed: 3
+  speed: 3,
+  mouseX: 0,
+  mouseY: 0
 };
 
 let keys = {};
-let players = {}; // Solo contendrá a los demás jugadores
+let players = {};
 let mousePos = { x: 0, y: 0 };
 
 canvas.addEventListener("mousemove", (e) => {
   mousePos.x = e.clientX;
   mousePos.y = e.clientY;
+  player.mouseX = e.clientX;
+  player.mouseY = e.clientY;
 });
 
 document.getElementById("playBtn").onclick = () => {
@@ -97,16 +77,23 @@ socket.onmessage = (event) => {
     requestAnimationFrame(gameLoop);
 
     setInterval(() => {
-      socket.send(JSON.stringify({ type: "move", x: player.x, y: player.y }));
+      socket.send(JSON.stringify({
+        type: "move",
+        x: player.x,
+        y: player.y,
+        mouseX: player.mouseX,
+        mouseY: player.mouseY,
+        username: player.username
+      }));
     }, 1000 / 20);
   }
 
   if (data.type === "state") {
-    // Actualizamos players con todos menos con el jugador local
     players = {};
     for (const id in data.players) {
       if (id !== player.id) {
         players[id] = data.players[id];
+        if (!players[id].username) players[id].username = "Unknown";
       }
     }
     updateLeaderboard();
@@ -145,12 +132,14 @@ function drawGrid() {
   ctx.strokeStyle = "rgba(0,0,0,0.1)";
   const offsetX = player.x - canvas.width / 2;
   const offsetY = player.y - canvas.height / 2;
+
   for (let x = -offsetX % gridSize; x < canvas.width; x += gridSize) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, canvas.height);
     ctx.stroke();
   }
+
   for (let y = -offsetY % gridSize; y < canvas.height; y += gridSize) {
     ctx.beginPath();
     ctx.moveTo(0, y);
@@ -179,18 +168,16 @@ function drawBiomes() {
   }
 }
 
-function getHandAngle(screenX, screenY) {
-  const dx = mousePos.x - screenX;
-  const dy = mousePos.y - screenY;
-  return Math.atan2(dy, dx);
-}
-
-function drawPlayerBodyAndHands(screenX, screenY, radius) {
+function drawPlayerBodyAndHands(screenX, screenY, radius, targetX, targetY) {
   const handRadius = 12;
   const handDistance = radius * 0.75;
   const handSeparation = 60;
 
-  const angle = getHandAngle(screenX, screenY);
+  const angle = Math.atan2(
+    (targetY !== undefined ? targetY - screenY : mousePos.y - screenY),
+    (targetX !== undefined ? targetX - screenX : mousePos.x - screenX)
+  );
+
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
   const perpX = Math.cos(angle + Math.PI / 2);
@@ -226,27 +213,28 @@ function drawPlayerBodyAndHands(screenX, screenY, radius) {
 }
 
 function drawPlayers() {
-  // Dibuja todos los jugadores excepto el local
   for (let id in players) {
     const p = players[id];
     const screenX = p.x - player.x + canvas.width / 2;
     const screenY = p.y - player.y + canvas.height / 2;
 
-    drawPlayerBodyAndHands(screenX, screenY, 38);
+    const targetX = p.mouseX - (player.x - canvas.width / 2) + screenX;
+    const targetY = p.mouseY - (player.y - canvas.height / 2) + screenY;
 
+    drawPlayerBodyAndHands(screenX, screenY, 38, targetX, targetY);
+
+    const username = p.username || "Unknown";
     ctx.fillStyle = "#fff";
     ctx.font = "18px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(p.username || "Unknown", screenX, screenY - 45);
+    ctx.fillText(username, screenX, screenY - 45);
   }
 }
 
 function drawMinimap() {
   minimapCtx.clearRect(0, 0, minimap.width, minimap.height);
 
-  // Fondo biomas
   const b = window.gameConfig.biomes;
-
   const scaleX = minimap.width / window.gameConfig.width;
   const scaleY = minimap.height / window.gameConfig.height;
 
@@ -261,7 +249,6 @@ function drawMinimap() {
   fillRectScaled(0, b.sandBanks.yStart, window.gameConfig.width, b.sandBanks.yEnd - b.sandBanks.yStart, "#f4e2d8");
   fillRectScaled(0, b.sandBanksBottom.yStart, window.gameConfig.width, b.sandBanksBottom.yEnd - b.sandBanksBottom.yStart, "#f4e2d8");
 
-  // Dibujar solo jugador local en minimapa
   minimapCtx.fillStyle = "#00ff00";
   minimapCtx.beginPath();
   minimapCtx.arc(player.x * scaleX, player.y * scaleY, 4, 0, 2 * Math.PI);
@@ -269,12 +256,8 @@ function drawMinimap() {
 }
 
 function updateLeaderboard() {
-  // Muestra todos los jugadores, incluyendo local
   const playerList = Object.values(players);
-
-  // Agregar el jugador local para la lista de leaderboard
   playerList.push(player);
-
   playerList.sort((a, b) => a.username.localeCompare(b.username));
 
   leaderboardList.innerHTML = "";
@@ -292,10 +275,8 @@ function gameLoop() {
 
   drawBiomes();
   drawGrid();
+  drawPlayers();
 
-  drawPlayers(); // dibuja otros jugadores
-
-  // Dibuja jugador local centrado en pantalla
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   drawPlayerBodyAndHands(centerX, centerY, player.radius);
