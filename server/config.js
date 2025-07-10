@@ -1,7 +1,7 @@
 module.exports = {
   map: {
-    width: 5000,
-    height: 5000,
+    width: 8000,   // Aumentado ancho
+    height: 8000,  // Aumentado alto
     gridSize: 50
   },
 
@@ -29,13 +29,13 @@ module.exports = {
       speedMultiplier: 0.6
     },
     desert: {
-      yStart: 3500,
-      yEnd: 5000,
+      yStart: 6500,  // Ajustado para mantener distancia en el mapa grande
+      yEnd: 8000,
       speedMultiplier: 1.0
     },
     river: {
-      yStart: 2400,
-      yEnd: 2600,
+      yStart: 3700,  // Centrado verticalmente en el nuevo mapa (8000 / 2 = 4000, río 200px alto)
+      yEnd: 3900,
       speedMultiplier: 0.9,
       current: {
         x: 0.8,
@@ -43,13 +43,13 @@ module.exports = {
       }
     },
     sandBanks: {
-      yStart: 2200,
-      yEnd: 2400,
+      yStart: 3500,
+      yEnd: 3700,
       speedMultiplier: 1.0
     },
     sandBanksBottom: {
-      yStart: 2600,
-      yEnd: 2800,
+      yStart: 3900,
+      yEnd: 4100,
       speedMultiplier: 1.0
     }
   }
