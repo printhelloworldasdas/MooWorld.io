@@ -108,6 +108,11 @@ function getCurrentBiome(y) {
 function movePlayer() {
   const biome = getCurrentBiome(player.y);
   const speed = player.speed * (biome.speedMultiplier || 1);
+  
+  // Guardar posición anterior para detectar movimiento
+  const oldX = player.x;
+  const oldY = player.y;
+  
   if (keys["w"]) player.y = Math.max(player.radius, player.y - speed);
   if (keys["s"]) player.y = Math.min(window.gameConfig.height - player.radius, player.y + speed);
   if (keys["a"]) player.x = Math.max(player.radius, player.x - speed);
@@ -115,6 +120,13 @@ function movePlayer() {
   if (biome.current) {
     player.x += biome.current.x;
     player.y += biome.current.y;
+  }
+  
+  // NUEVO: Actualizar coordenadas del mouse cuando el jugador se mueva
+  if (oldX !== player.x || oldY !== player.y) {
+    // Recalcular las coordenadas del mouse basándose en la nueva posición del jugador
+    player.mouseX = mousePos.x - canvas.width / 2 + player.x;
+    player.mouseY = mousePos.y - canvas.height / 2 + player.y;
   }
 }
 
@@ -211,7 +223,7 @@ function drawPlayers() {
       targetY = p.mouseY - player.y + canvas.height / 2;
     }
     
-    drawPlayerBodyAndHands(screenX, screenY, 38, targetX, targetY);
+    drawPlayerBodyAndHands(screenX, screenY, 36, targetX, targetY);
     
     const username = p.username || "Unknown";
     ctx.fillStyle = "#fff";
