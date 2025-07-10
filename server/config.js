@@ -6,7 +6,7 @@ module.exports = {
   },
 
   game: {
-    mode: "normal",  // Nombre oficial del modo de juego
+    mode: "normal",
     maxPlayers: 100,
     tickRate: 20
   },
