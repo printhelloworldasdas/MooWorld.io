@@ -1,9 +1,16 @@
+const express = require("express");
+const http = require("http");
 const WebSocket = require("ws");
-const config = require("./config");
+const path = require("path");
 const { v4: uuidv4 } = require("uuid");
+const config = require("./config");
 
-const wss = new WebSocket.Server({ port: config.server.port });
-console.log(`MooWorld.io servidor iniciado en puerto ${config.server.port}`);
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// 👉 Servir archivos estáticos desde la carpeta client/
+app.use(express.static(path.join(__dirname, "../client")));
 
 const players = {};
 
@@ -50,7 +57,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-// Loop de sincronización
+// Enviar estado a todos los jugadores
 setInterval(() => {
   const state = {
     type: "state",
@@ -63,3 +70,7 @@ setInterval(() => {
     }
   });
 }, 1000 / config.game.tickRate);
+
+server.listen(config.server.port, () => {
+  console.log(`Servidor activo en http://localhost:${config.server.port}`);
+});
