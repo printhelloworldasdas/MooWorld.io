@@ -6,17 +6,47 @@ const minimapCtx = minimap.getContext("2d");
 
 const leaderboardList = document.getElementById("leaderboardList");
 
-// Configuración del mapa, la puedes definir aquí o recibirla desde el servidor
+// Configuración del mapa y biomas
 window.gameConfig = {
   width: 5000,
   height: 5000,
   gridSize: 50,
+  biomes: {
+    snow: {
+      yStart: 0,
+      yEnd: 1500,
+      speedMultiplier: 0.6
+    },
+    desert: {
+      yStart: 3500,
+      yEnd: 5000,
+      speedMultiplier: 1.0
+    },
+    river: {
+      yStart: 2400,
+      yEnd: 2600,
+      speedMultiplier: 0.9,
+      current: {
+        x: 0.8,
+        y: 0
+      }
+    },
+    sandBanks: {
+      yStart: 2200,
+      yEnd: 2400,
+      speedMultiplier: 1.0
+    },
+    sandBanksBottom: {
+      yStart: 2600,
+      yEnd: 2800,
+      speedMultiplier: 1.0
+    }
+  }
 };
 
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-
   minimap.width = 200;
   minimap.height = 200;
 }
@@ -31,12 +61,11 @@ let player = {
   x: 0,
   y: 0,
   radius: 36,
-  speed: 3,
+  speed: 3
 };
 
 let keys = {};
 let players = {};
-
 let mousePos = { x: 0, y: 0 };
 
 canvas.addEventListener("mousemove", (e) => {
@@ -49,7 +78,6 @@ document.getElementById("playBtn").onclick = () => {
   if (!username) username = "Unknown";
   player.username = username;
 
-  // Ocultar menú y mostrar canvas + UI
   document.getElementById("menu").style.display = "none";
   canvas.style.display = "block";
   document.getElementById("leaderboard").style.display = "block";
@@ -78,6 +106,30 @@ socket.onmessage = (event) => {
 window.addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
 window.addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
 
+function getCurrentBiome(y) {
+  const biomes = window.gameConfig.biomes;
+  for (const name in biomes) {
+    const b = biomes[name];
+    if (y >= b.yStart && y <= b.yEnd) return b;
+  }
+  return { speedMultiplier: 1.0 };
+}
+
+function movePlayer() {
+  const biome = getCurrentBiome(player.y);
+  const speed = player.speed * (biome.speedMultiplier || 1);
+
+  if (keys["w"]) player.y = Math.max(player.radius, player.y - speed);
+  if (keys["s"]) player.y = Math.min(window.gameConfig.height - player.radius, player.y + speed);
+  if (keys["a"]) player.x = Math.max(player.radius, player.x - speed);
+  if (keys["d"]) player.x = Math.min(window.gameConfig.width - player.radius, player.x + speed);
+
+  if (biome.current) {
+    player.x += biome.current.x;
+    player.y += biome.current.y;
+  }
+}
+
 function drawGrid() {
   const gridSize = window.gameConfig.gridSize;
   ctx.strokeStyle = "rgba(0,0,0,0.1)";
@@ -97,15 +149,26 @@ function drawGrid() {
   }
 }
 
-function movePlayer() {
-  // Limitar movimiento para no salirse del mapa
-  if (keys["w"]) player.y = Math.max(player.radius, player.y - player.speed);
-  if (keys["s"]) player.y = Math.min(window.gameConfig.height - player.radius, player.y + player.speed);
-  if (keys["a"]) player.x = Math.max(player.radius, player.x - player.speed);
-  if (keys["d"]) player.x = Math.min(window.gameConfig.width - player.radius, player.x + player.speed);
+function drawBiomes() {
+  const { biomes } = window.gameConfig;
+  const offsetY = player.y - canvas.height / 2;
+
+  for (const name in biomes) {
+    const b = biomes[name];
+    let color = "#87ce6f";
+    if (name === "snow") color = "#e0f7fa";
+    if (name === "desert") color = "#edc9af";
+    if (name === "river") color = "#4da6ff";
+    if (name.includes("sandBanks")) color = "#f4e2d8";
+
+    const yStart = b.yStart - offsetY;
+    const height = b.yEnd - b.yStart;
+
+    ctx.fillStyle = color;
+    ctx.fillRect(0, yStart, canvas.width, height);
+  }
 }
 
-// Función para obtener ángulo desde el centro hacia el mouse
 function getHandAngle(screenX, screenY) {
   const dx = mousePos.x - screenX;
   const dy = mousePos.y - screenY;
@@ -114,24 +177,20 @@ function getHandAngle(screenX, screenY) {
 
 function drawPlayerBodyAndHands(screenX, screenY, radius) {
   const handRadius = 12;
-  const handDistance = radius * 0.75; // distancia adelante del cuerpo
-  const handSeparation = 60; // separación lateral entre manos
+  const handDistance = radius * 0.75;
+  const handSeparation = 60;
 
   const angle = getHandAngle(screenX, screenY);
-
-  // Calcular vectores
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
   const perpX = Math.cos(angle + Math.PI / 2);
   const perpY = Math.sin(angle + Math.PI / 2);
 
-  // Posiciones manos
   const handLeftX = screenX + dx * handDistance + perpX * (-handSeparation / 2);
   const handLeftY = screenY + dy * handDistance + perpY * (-handSeparation / 2);
   const handRightX = screenX + dx * handDistance + perpX * (handSeparation / 2);
   const handRightY = screenY + dy * handDistance + perpY * (handSeparation / 2);
 
-  // Dibujar manos primero
   ctx.fillStyle = "#BF8F54";
   ctx.strokeStyle = "#35354D";
   ctx.lineWidth = 5;
@@ -146,7 +205,6 @@ function drawPlayerBodyAndHands(screenX, screenY, radius) {
   ctx.fill();
   ctx.stroke();
 
-  // Dibujar cuerpo encima
   ctx.fillStyle = "#BF8F54";
   ctx.beginPath();
   ctx.arc(screenX, screenY, radius, 0, Math.PI * 2);
@@ -203,15 +261,11 @@ function drawMinimap() {
   const mapHeight = minimap.height;
 
   minimapCtx.clearRect(0, 0, mapWidth, mapHeight);
-
   minimapCtx.fillStyle = "#222";
   minimapCtx.fillRect(0, 0, mapWidth, mapHeight);
 
-  const worldSizeX = window.gameConfig.width;
-  const worldSizeY = window.gameConfig.height;
-
-  const scaleX = mapWidth / worldSizeX;
-  const scaleY = mapHeight / worldSizeY;
+  const scaleX = mapWidth / window.gameConfig.width;
+  const scaleY = mapHeight / window.gameConfig.height;
 
   for (let id in players) {
     const p = players[id];
@@ -225,7 +279,6 @@ function drawMinimap() {
   }
 }
 
-// Dibuja sombreado oscuro en los bordes del mapa para indicar límite
 function drawDarkBorders() {
   const darkColor = "rgba(0, 0, 0, 0.6)";
   const mapWidth = window.gameConfig.width;
@@ -238,38 +291,21 @@ function drawDarkBorders() {
 
   ctx.fillStyle = darkColor;
 
-  // Izquierda
-  if (leftLimit < 0) {
-    ctx.fillRect(0, 0, -leftLimit, canvas.height);
-  }
-  // Derecha
-  if (rightLimit > mapWidth) {
-    ctx.fillRect(canvas.width - (rightLimit - mapWidth), 0, rightLimit - mapWidth, canvas.height);
-  }
-  // Arriba
-  if (topLimit < 0) {
-    ctx.fillRect(0, 0, canvas.width, -topLimit);
-  }
-  // Abajo
-  if (bottomLimit > mapHeight) {
-    ctx.fillRect(0, canvas.height - (bottomLimit - mapHeight), canvas.width, bottomLimit - mapHeight);
-  }
+  if (leftLimit < 0) ctx.fillRect(0, 0, -leftLimit, canvas.height);
+  if (rightLimit > mapWidth) ctx.fillRect(canvas.width - (rightLimit - mapWidth), 0, rightLimit - mapWidth, canvas.height);
+  if (topLimit < 0) ctx.fillRect(0, 0, canvas.width, -topLimit);
+  if (bottomLimit > mapHeight) ctx.fillRect(0, canvas.height - (bottomLimit - mapHeight), canvas.width, bottomLimit - mapHeight);
 }
 
 function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Fondo césped
-  ctx.fillStyle = "#87ce6f";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+  drawBiomes();
   drawDarkBorders();
-
   drawGrid();
   movePlayer();
   drawPlayers();
   drawPlayer();
-
   drawMinimap();
 
   requestAnimationFrame(gameLoop);
