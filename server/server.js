@@ -27,10 +27,10 @@ wss.on("connection", (ws) => {
 
         players[playerId] = {
           id: playerId,
-          username: data.username,
+          username: data.username || "Unknown",
           x: spawnX,
           y: spawnY,
-          mouseX: 0,  // Nuevo: posición del mouse
+          mouseX: 0,
           mouseY: 0
         };
 
@@ -45,8 +45,9 @@ wss.on("connection", (ws) => {
       if (data.type === "move" && playerId && players[playerId]) {
         players[playerId].x = data.x;
         players[playerId].y = data.y;
-        players[playerId].mouseX = data.mouseX;  // Nuevo: actualizar posición del mouse
-        players[playerId].mouseY = data.mouseY;
+        players[playerId].mouseX = data.mouseX || 0;
+        players[playerId].mouseY = data.mouseY || 0;
+        players[playerId].username = data.username || players[playerId].username;
       }
     } catch (err) {
       console.error("Mensaje inválido:", msg);
