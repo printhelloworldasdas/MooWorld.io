@@ -30,6 +30,8 @@ wss.on("connection", (ws) => {
           username: data.username,
           x: spawnX,
           y: spawnY,
+          mouseX: 0,  // Nuevo: posición del mouse
+          mouseY: 0
         };
 
         ws.send(JSON.stringify({
@@ -43,6 +45,8 @@ wss.on("connection", (ws) => {
       if (data.type === "move" && playerId && players[playerId]) {
         players[playerId].x = data.x;
         players[playerId].y = data.y;
+        players[playerId].mouseX = data.mouseX;  // Nuevo: actualizar posición del mouse
+        players[playerId].mouseY = data.mouseY;
       }
     } catch (err) {
       console.error("Mensaje inválido:", msg);
@@ -56,7 +60,6 @@ wss.on("connection", (ws) => {
   });
 });
 
-// Enviar estado del juego a todos los clientes
 setInterval(() => {
   const state = {
     type: "state",
