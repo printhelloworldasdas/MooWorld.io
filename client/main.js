@@ -270,4 +270,4 @@ function gameLoop() {
   
   drawMinimap();
   requestAnimationFrame(gameLoop);
-    }
+}
